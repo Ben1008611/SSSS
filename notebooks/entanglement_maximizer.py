@@ -46,16 +46,30 @@ class TFIM(nn.Module):
         '''
         _, v = torch.symeig(self._buildH(), eigenvectors=True)
 
-        #WIP 
+        rho = torch.ger(v[:, 0], v[:, 0])
+        rhoA = torch.zeros((1<<self.L//2, 1<<self.L//2), dtype=rho.dtype)
 
-        return ... 
+        # loop over all basis states
+        for statei in range(rho.shape[0]):
+            for statej in range(rho.shape[1]): # this is less efficient 
+
+                iB = int("{0:b}".format(statei).zfill(self.L)[:-L//2], 2)
+                jB = int("{0:b}".format(statej).zfill(self.L)[:-L//2], 2)
+                if (iB!=jB): continue
+
+                iA = int("{0:b}".format(statei).zfill(self.L)[-L//2:], 2)
+                jA = int("{0:b}".format(statej).zfill(self.L)[-L//2:], 2)
+        
+                rhoA[iA, jA] = rhoA[iA, jA] + rho[statei, statej]
+
+        return -torch.log((rhoA@rhoA).trace())
 
 if __name__=='__main__':
     import sys 
-    L = 4
+    L = 6
     model = TFIM(L)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr = 1e-1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
 
     params = list(model.parameters())
     params = list(filter(lambda p: p.requires_grad, params))
@@ -68,4 +82,4 @@ if __name__=='__main__':
         model.zero_grad()
         loss.backward()
         optimizer.step()
-        print (e, loss.item())
+        print (e, model.Gamma.item(), loss.item())
